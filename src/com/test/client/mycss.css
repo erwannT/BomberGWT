@@ -1,0 +1,7 @@
+@sprite .myBackground {
+  gwt-image: "test";
+  /* Additional CSS rules may be added. */
+  height: 5px;
+  width : 5px;
+  
+}
