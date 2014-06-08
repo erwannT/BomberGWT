@@ -15,6 +15,10 @@ import com.google.gwt.event.shared.SimpleEventBus;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.RootPanel;
+import com.test.client.level.Level;
+import com.test.client.physics.IPhysics;
+import com.test.client.physics.Physics;
+import com.test.client.resources.Resources;
 
 /**
  * Entry point classes define <code>onModuleLoad()</code>.
@@ -29,12 +33,15 @@ public class GWTML5 implements EntryPoint, KeyDownHandler, KeyUpHandler, Animati
 	private HTML htmlNextPos = new HTML();
 
 	private Bomberman bomberman;
+	private IPhysics bomberManPhysics;
+
+	private Bomb bomb;
 
 	private EventBus eventBus = new SimpleEventBus();
 
-	private Turtle turtle;
+	private Level tiles;
 
-	private Tiles tiles;
+	private Context2d context;
 
 	/**
 	 * This is the entry point method.
@@ -53,16 +60,19 @@ public class GWTML5 implements EntryPoint, KeyDownHandler, KeyUpHandler, Animati
 		canvas.getCanvasElement().setHeight(Window.getClientHeight());
 		canvas.getCanvasElement().setWidth(Window.getClientWidth());
 
-		final Context2d context = canvas.getContext2d();
-
-		// display a turle
-		turtle = new Turtle(context);
-		turtle.walk();
-
-		bomberman = new Bomberman(context);
+		context = canvas.getContext2d();
 
 		// create tiles
-		tiles = new Tiles(eventBus, Resources.INSTANCE.synchronous(), context);
+		tiles = new Level(eventBus, Resources.INSTANCE.synchronous(), context);
+		tiles.draw();
+
+		bomberManPhysics = new Physics(tiles);
+
+		bomberman = new Bomberman();
+		bomberman.draw(context, bomberManPhysics.getPixelXPosition(), bomberManPhysics.getPixelYPosition());
+
+		bomb = new Bomb();
+		bomb.startWaitingExplosion();
 
 		// init keyboard handler
 		canvas.addKeyUpHandler(this);
@@ -94,6 +104,8 @@ public class GWTML5 implements EntryPoint, KeyDownHandler, KeyUpHandler, Animati
 			e.preventDefault();
 			e.stopPropagation();
 		}
+		execute(0);
+
 	}
 
 	@Override
@@ -112,62 +124,42 @@ public class GWTML5 implements EntryPoint, KeyDownHandler, KeyUpHandler, Animati
 
 		if (timestamp - this.timestamp > 020) {
 
-			int xBomberMan = Math.round((float) bomberman.getXPos() / 16);
-
-			int yBomberMan = Math.round((float) (bomberman.getYPos() + 16) / 16);
-
-			int indexData = xBomberMan + yBomberMan * 16;
-
-			int currentTiles = tiles.getElement(xBomberMan, yBomberMan);
-			bomberman.clear();
-			html.setText("X : " + Math.round(xBomberMan) + " y : " + Math.round(yBomberMan) + ", indexData : " + indexData + "  coord tiltes : " + currentTiles);
-			int nextElt = 0;
 			switch (movBomber) {
 			case DOWN:
-				nextElt = tiles.getElement(xBomberMan, yBomberMan + 1);
-				if (nextElt == 0) {
-					bomberman.walk(movBomber);
-				} else {
-					bomberman.walk(Movement.STOP);
-				}
+				bomberManPhysics.moveDown();
+				bomberman.startMoveDown();
 				break;
 			case LEFT:
-				nextElt = tiles.getElement(xBomberMan - 1, yBomberMan);
-				if (nextElt == 0) {
-					bomberman.walk(movBomber);
-				} else {
-					bomberman.walk(Movement.STOP);
-				}
+				bomberManPhysics.moveLeft();
+				bomberman.startMoveLeft();
 				break;
-
 			case UP:
-				nextElt = tiles.getElement(xBomberMan, yBomberMan - 1);
-				if (nextElt == 0) {
-					bomberman.walk(movBomber);
-				} else {
-					bomberman.walk(Movement.STOP);
-				}
+				bomberManPhysics.moveUp();
+				bomberman.startMoveUp();
 				break;
 			case RIGHT:
-				nextElt = tiles.getElement(xBomberMan + 1, yBomberMan);
-				if (nextElt == 0) {
-					bomberman.walk(movBomber);
-				} else {
-					bomberman.walk(Movement.STOP);
-				}
+				bomberManPhysics.moveRight();
+				bomberman.startMoveRight();
 				break;
+			case STOP:
+				bomberManPhysics.stop();
+				bomberman.stop();
+
 			default:
-				bomberman.walk(Movement.STOP);
+				bomberman.stop();
 				break;
 			}
 
-			tiles.refresh();
-			bomberman.refresh();
+			tiles.draw();
+			bomberManPhysics.apply();
 
-			htmlNextPos.setText(" futur pos : " + nextElt);
+			html.setText(" x : " + bomberManPhysics.getPixelXPosition() + "; y : " + bomberManPhysics.getPixelYPosition());
+
+			bomberman.draw(context, bomberManPhysics.getPixelXPosition(), bomberManPhysics.getPixelYPosition());
+
+			bomb.draw(context);
+
 			this.timestamp = timestamp;
-
-			// movBomber = Movement.STOP;
 
 		}
 		create.requestAnimationFrame(this);

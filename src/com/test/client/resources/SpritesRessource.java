@@ -1,4 +1,4 @@
-package com.test.client;
+package com.test.client.resources;
 
 import com.google.gwt.core.shared.GWT;
 import com.google.gwt.resources.client.ClientBundle;
