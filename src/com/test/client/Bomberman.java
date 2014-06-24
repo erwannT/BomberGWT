@@ -159,5 +159,6 @@ public class Bomberman {
 	 */
 	public void draw(Context2d context, int x, int y) {
 		context.drawImage(image, xImg, yImg, 16, 32, x, y, 16, 32);
+
 	}
 }

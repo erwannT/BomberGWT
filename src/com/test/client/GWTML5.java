@@ -1,5 +1,9 @@
 package com.test.client;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import com.google.gwt.animation.client.AnimationScheduler;
 import com.google.gwt.animation.client.AnimationScheduler.AnimationCallback;
 import com.google.gwt.animation.client.AnimationScheduler.AnimationHandle;
@@ -16,6 +20,8 @@ import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.test.client.level.Level;
+import com.test.client.physics.BombPhysics;
+import com.test.client.physics.IBombPhysics;
 import com.test.client.physics.IPhysics;
 import com.test.client.physics.Physics;
 import com.test.client.resources.Resources;
@@ -35,7 +41,7 @@ public class GWTML5 implements EntryPoint, KeyDownHandler, KeyUpHandler, Animati
 	private Bomberman bomberman;
 	private IPhysics bomberManPhysics;
 
-	private Bomb bomb;
+	private Map<IBombPhysics, Bomb> mapBbomb = new HashMap<IBombPhysics, Bomb>();
 
 	private EventBus eventBus = new SimpleEventBus();
 
@@ -71,12 +77,19 @@ public class GWTML5 implements EntryPoint, KeyDownHandler, KeyUpHandler, Animati
 		bomberman = new Bomberman();
 		bomberman.draw(context, bomberManPhysics.getPixelXPosition(), bomberManPhysics.getPixelYPosition());
 
-		bomb = new Bomb();
-		bomb.startWaitingExplosion();
+		IBombPhysics bombPhysics = new BombPhysics(tiles);
+
+		Bomb bomb = new Bomb();
+
+		mapBbomb.put(bombPhysics, bomb);
+
+		bomb.draw(context, bombPhysics);
 
 		// init keyboard handler
 		canvas.addKeyUpHandler(this);
 		canvas.addKeyDownHandler(this);
+
+		anime();
 
 		// init animation frame
 		AnimationHandle requestAnimationFrame = create.requestAnimationFrame(this, context.getCanvas());
@@ -124,45 +137,63 @@ public class GWTML5 implements EntryPoint, KeyDownHandler, KeyUpHandler, Animati
 
 		if (timestamp - this.timestamp > 020) {
 
-			switch (movBomber) {
-			case DOWN:
-				bomberManPhysics.moveDown();
-				bomberman.startMoveDown();
-				break;
-			case LEFT:
-				bomberManPhysics.moveLeft();
-				bomberman.startMoveLeft();
-				break;
-			case UP:
-				bomberManPhysics.moveUp();
-				bomberman.startMoveUp();
-				break;
-			case RIGHT:
-				bomberManPhysics.moveRight();
-				bomberman.startMoveRight();
-				break;
-			case STOP:
-				bomberManPhysics.stop();
-				bomberman.stop();
-
-			default:
-				bomberman.stop();
-				break;
-			}
-
-			tiles.draw();
-			bomberManPhysics.apply();
-
-			html.setText(" x : " + bomberManPhysics.getPixelXPosition() + "; y : " + bomberManPhysics.getPixelYPosition());
-
-			bomberman.draw(context, bomberManPhysics.getPixelXPosition(), bomberManPhysics.getPixelYPosition());
-
-			bomb.draw(context);
-
+			anime();
 			this.timestamp = timestamp;
 
 		}
 		create.requestAnimationFrame(this);
+
+	}
+
+	public void anime() {
+		switch (movBomber) {
+		case DOWN:
+			bomberManPhysics.moveDown();
+			bomberman.startMoveDown();
+			break;
+		case LEFT:
+			bomberManPhysics.moveLeft();
+			bomberman.startMoveLeft();
+			break;
+		case UP:
+			bomberManPhysics.moveUp();
+			bomberman.startMoveUp();
+			break;
+		case RIGHT:
+			bomberManPhysics.moveRight();
+			bomberman.startMoveRight();
+			break;
+		case STOP:
+			bomberManPhysics.stop();
+			bomberman.stop();
+
+		default:
+			bomberman.stop();
+			break;
+		}
+
+		tiles.draw();
+		bomberManPhysics.apply();
+
+		html.setText(" x : " + bomberManPhysics.getPixelXPosition() + "; y : " + bomberManPhysics.getPixelYPosition());
+		bomberman.draw(context, bomberManPhysics.getPixelXPosition(), bomberManPhysics.getPixelYPosition());
+
+		for (Entry<IBombPhysics, Bomb> entry : mapBbomb.entrySet()) {
+			// TODO n'appeler qu'une seule fois
+			if (entry.getKey().isExplosionStarted()) {
+				entry.getValue().startExplosion();
+			}
+
+			if (entry.getKey().isExplosionFinished()) {
+				mapBbomb.remove(entry.getKey());
+			}
+
+		}
+
+		for (Entry<IBombPhysics, Bomb> entry : mapBbomb.entrySet()) {
+			entry.getKey().apply();
+			entry.getValue().draw(context, entry.getKey());
+		}
 
 	}
 }
